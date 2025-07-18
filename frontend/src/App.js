@@ -353,93 +353,6 @@ const CreateSemesterModal = ({ isOpen, onClose, onSuccess, years }) => {
   );
 };
 
-const CreateTermModal = ({ isOpen, onClose, onSuccess }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    start_date: '',
-    end_date: ''
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const data = {
-        ...formData,
-        start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
-        end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
-      };
-      await axios.post(`${API}/terms`, data);
-      onSuccess();
-      onClose();
-      setFormData({ name: '', description: '', start_date: '', end_date: '' });
-    } catch (error) {
-      console.error('Error creating term:', error);
-    }
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Term">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Name *</label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            rows="3"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Start Date</label>
-            <input
-              type="date"
-              value={formData.start_date}
-              onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">End Date</label>
-            <input
-              type="date"
-              value={formData.end_date}
-              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-        <div className="flex space-x-4">
-          <button
-            type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            Create Term
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-};
-
 const CreateSubjectModal = ({ isOpen, onClose, onSuccess, semesters }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -1081,7 +994,8 @@ function App() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredFiles.map(file => {
           const subject = subjects.find(s => s.id === file.subject_id);
-          const term = terms.find(t => t.id === file.term_id);
+          const semester = semesters.find(s => s.id === subject?.semester_id);
+          const year = years.find(y => y.id === semester?.year_id);
           
           return (
             <div key={file.id} className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
@@ -1089,7 +1003,7 @@ function App() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 truncate">{file.name}</h3>
                   <p className="text-sm text-gray-600">
-                    {term?.name} • {subject?.name}
+                    Year {year?.year} - Semester {semester?.name} • {subject?.name}
                   </p>
                 </div>
                 <span className={`px-2 py-1 rounded text-xs ${
@@ -1164,37 +1078,67 @@ function App() {
 
   const renderManagement = () => (
     <div className="space-y-6">
-      {/* Terms section */}
+      {/* Years section */}
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Terms</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Academic Years</h3>
           <button
-            onClick={() => setShowCreateTerm(true)}
+            onClick={() => setShowCreateYear(true)}
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
-            Add Term
+            Add Year
           </button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {terms.map(term => (
-            <div key={term.id} className="border rounded-lg p-4">
-              <h4 className="font-medium">{term.name}</h4>
-              {term.description && (
-                <p className="text-sm text-gray-600 mt-1">{term.description}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {years.map(year => (
+            <div key={year.id} className="border rounded-lg p-4">
+              <h4 className="font-medium">Year {year.year}</h4>
+              {year.description && (
+                <p className="text-sm text-gray-600 mt-1">{year.description}</p>
               )}
-              <div className="mt-2 text-xs text-gray-500">
-                {term.start_date && (
-                  <span>
-                    {new Date(term.start_date).toLocaleDateString()} - 
-                    {term.end_date ? new Date(term.end_date).toLocaleDateString() : 'Present'}
-                  </span>
-                )}
-              </div>
               <div className="mt-2 text-sm text-gray-600">
-                {subjects.filter(s => s.term_id === term.id).length} subjects
+                {semesters.filter(s => s.year_id === year.id).length} semesters
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Semesters section */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Semesters</h3>
+          <button
+            onClick={() => setShowCreateSemester(true)}
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+          >
+            Add Semester
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {semesters.map(semester => {
+            const year = years.find(y => y.id === semester.year_id);
+            return (
+              <div key={semester.id} className="border rounded-lg p-4">
+                <h4 className="font-medium">Semester {semester.name}</h4>
+                <p className="text-sm text-gray-600">Year {year?.year}</p>
+                {semester.description && (
+                  <p className="text-sm text-gray-600 mt-1">{semester.description}</p>
+                )}
+                <div className="mt-2 text-xs text-gray-500">
+                  {semester.start_date && (
+                    <span>
+                      {new Date(semester.start_date).toLocaleDateString()} - 
+                      {semester.end_date ? new Date(semester.end_date).toLocaleDateString() : 'Present'}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 text-sm text-gray-600">
+                  {subjects.filter(s => s.semester_id === semester.id).length} subjects
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -1204,14 +1148,15 @@ function App() {
           <h3 className="text-lg font-semibold text-gray-900">Subjects</h3>
           <button
             onClick={() => setShowCreateSubject(true)}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
           >
             Add Subject
           </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {subjects.map(subject => {
-            const term = terms.find(t => t.id === subject.term_id);
+            const semester = semesters.find(s => s.id === subject.semester_id);
+            const year = years.find(y => y.id === semester?.year_id);
             const subjectFiles = files.filter(f => f.subject_id === subject.id);
             
             return (
@@ -1223,7 +1168,7 @@ function App() {
                   />
                   <div>
                     <h4 className="font-medium">{subject.name}</h4>
-                    <p className="text-sm text-gray-600">{term?.name}</p>
+                    <p className="text-sm text-gray-600">Year {year?.year} - Semester {semester?.name}</p>
                   </div>
                 </div>
                 {subject.description && (
@@ -1305,24 +1250,32 @@ function App() {
       </main>
 
       {/* Modals */}
-      <CreateTermModal
-        isOpen={showCreateTerm}
-        onClose={() => setShowCreateTerm(false)}
+      <CreateYearModal
+        isOpen={showCreateYear}
+        onClose={() => setShowCreateYear(false)}
         onSuccess={loadData}
+      />
+      
+      <CreateSemesterModal
+        isOpen={showCreateSemester}
+        onClose={() => setShowCreateSemester(false)}
+        onSuccess={loadData}
+        years={years}
       />
       
       <CreateSubjectModal
         isOpen={showCreateSubject}
         onClose={() => setShowCreateSubject(false)}
         onSuccess={loadData}
-        terms={terms}
+        semesters={semesters}
       />
       
       <AddFileModal
         isOpen={showAddFile}
         onClose={() => setShowAddFile(false)}
         onSuccess={loadData}
-        terms={terms}
+        years={years}
+        semesters={semesters}
         subjects={subjects}
       />
       
