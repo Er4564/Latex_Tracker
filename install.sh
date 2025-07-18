@@ -1,14 +1,234 @@
 #!/bin/bash
 
-# LaTeX Tracker - Ubuntu Optimized Installation Script
-echo "🚀 Starting LaTeX Tracker Installation for Ubuntu..."
+# LaTeX Tracker - Linux Multi-Distribution Optimized Installation Script
+set -e
 
-# Colors for output
+# Colors for better output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+echo -e "${BLUE}🚀 Starting LaTeX Tracker Installation for Linux...${NC}"
+
+# Detect Linux distribution
+detect_linux_distro() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        DISTRO=$ID
+        DISTRO_VERSION=$VERSION_ID
+        echo -e "${CYAN}📋 Detected: $PRETTY_NAME${NC}"
+    else
+        DISTRO="unknown"
+        echo -e "${YELLOW}⚠️  Unknown distribution, assuming Ubuntu/Debian${NC}"
+    fi
+}
+
+# System resource check
+check_system_resources() {
+    echo -e "${BLUE}🔍 Checking system resources...${NC}"
+    
+    # Check available memory
+    TOTAL_MEM=$(free -m | awk 'NR==2{print $2}')
+    FREE_MEM=$(free -m | awk 'NR==2{print $7}')
+    FREE_MEM_PERCENT=$(echo "scale=1; $FREE_MEM * 100 / $TOTAL_MEM" | bc -l 2>/dev/null || echo "0")
+    
+    echo -e "${CYAN}💾 Memory: ${FREE_MEM}MB free of ${TOTAL_MEM}MB (${FREE_MEM_PERCENT}%)${NC}"
+    
+    if (( $(echo "$FREE_MEM < 500" | bc -l 2>/dev/null || echo "1") )); then
+        echo -e "${YELLOW}⚠️  Warning: Low memory available. Consider closing other applications.${NC}"
+    fi
+    
+    # Check disk space
+    DISK_USAGE=$(df . | tail -1 | awk '{print $5}' | sed 's/%//')
+    DISK_AVAIL=$(df -h . | tail -1 | awk '{print $4}')
+    
+    echo -e "${CYAN}💿 Disk: ${DISK_AVAIL} available (${DISK_USAGE}% used)${NC}"
+    
+    if [ "$DISK_USAGE" -gt 90 ]; then
+        echo -e "${RED}❌ Error: Not enough disk space (${DISK_USAGE}% used)${NC}"
+        exit 1
+    fi
+    
+    # Check CPU cores
+    CPU_CORES=$(nproc)
+    echo -e "${CYAN}🔧 CPU: ${CPU_CORES} cores available${NC}"
+}
+
+# Enhanced dependency installation
+install_dependencies_by_distro() {
+    echo -e "${BLUE}📦 Installing dependencies for $DISTRO...${NC}"
+    
+    case $DISTRO in
+        ubuntu|debian|pop|mint)
+            echo -e "${CYAN}🔄 Updating package list...${NC}"
+            sudo apt-get update -qq
+            
+            echo -e "${CYAN}📋 Installing system packages...${NC}"
+            sudo apt-get install -y \
+                curl \
+                wget \
+                git \
+                build-essential \
+                software-properties-common \
+                apt-transport-https \
+                ca-certificates \
+                gnupg \
+                lsb-release \
+                bc
+            
+            # Install Node.js
+            if ! command -v node &> /dev/null; then
+                echo -e "${CYAN}📦 Installing Node.js...${NC}"
+                curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+                sudo apt-get install -y nodejs
+            fi
+            
+            # Install Python
+            if ! command -v python3 &> /dev/null; then
+                echo -e "${CYAN}🐍 Installing Python...${NC}"
+                sudo apt-get install -y python3 python3-pip python3-venv python3-dev
+            fi
+            
+            # Install MongoDB
+            if ! command -v mongod &> /dev/null; then
+                echo -e "${CYAN}🍃 Installing MongoDB...${NC}"
+                wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+                echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+                sudo apt-get update -qq
+                sudo apt-get install -y mongodb-org
+            fi
+            
+            # Install LaTeX
+            echo -e "${CYAN}📄 Installing LaTeX (XeTeX)...${NC}"
+            sudo apt-get install -y texlive-xetex texlive-fonts-recommended texlive-fonts-extra
+            ;;
+            
+        fedora|centos|rhel|rocky|almalinux)
+            echo -e "${CYAN}🔄 Updating package list...${NC}"
+            sudo dnf update -y -q
+            
+            echo -e "${CYAN}📋 Installing system packages...${NC}"
+            sudo dnf install -y \
+                curl \
+                wget \
+                git \
+                gcc \
+                gcc-c++ \
+                make \
+                bc
+            
+            # Install Node.js
+            if ! command -v node &> /dev/null; then
+                echo -e "${CYAN}📦 Installing Node.js...${NC}"
+                sudo dnf install -y nodejs npm
+            fi
+            
+            # Install Python
+            if ! command -v python3 &> /dev/null; then
+                echo -e "${CYAN}🐍 Installing Python...${NC}"
+                sudo dnf install -y python3 python3-pip python3-devel
+            fi
+            
+            # Install MongoDB
+            if ! command -v mongod &> /dev/null; then
+                echo -e "${CYAN}🍃 Installing MongoDB...${NC}"
+                sudo tee /etc/yum.repos.d/mongodb-org-6.0.repo > /dev/null <<EOF
+[mongodb-org-6.0]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/redhat/8/mongodb-org/6.0/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://www.mongodb.org/static/pgp/server-6.0.asc
+EOF
+                sudo dnf install -y mongodb-org
+            fi
+            
+            # Install LaTeX
+            echo -e "${CYAN}📄 Installing LaTeX (XeTeX)...${NC}"
+            sudo dnf install -y texlive-xetex texlive-collection-fontsrecommended
+            ;;
+            
+        arch|manjaro)
+            echo -e "${CYAN}🔄 Updating package list...${NC}"
+            sudo pacman -Sy --noconfirm
+            
+            echo -e "${CYAN}📋 Installing system packages...${NC}"
+            sudo pacman -S --noconfirm \
+                curl \
+                wget \
+                git \
+                base-devel \
+                bc
+            
+            # Install Node.js
+            if ! command -v node &> /dev/null; then
+                echo -e "${CYAN}📦 Installing Node.js...${NC}"
+                sudo pacman -S --noconfirm nodejs npm
+            fi
+            
+            # Install Python
+            if ! command -v python3 &> /dev/null; then
+                echo -e "${CYAN}🐍 Installing Python...${NC}"
+                sudo pacman -S --noconfirm python python-pip
+            fi
+            
+            # Install MongoDB
+            if ! command -v mongod &> /dev/null; then
+                echo -e "${CYAN}🍃 Installing MongoDB...${NC}"
+                sudo pacman -S --noconfirm mongodb-bin
+            fi
+            
+            # Install LaTeX
+            echo -e "${CYAN}📄 Installing LaTeX (XeTeX)...${NC}"
+            sudo pacman -S --noconfirm texlive-bin texlive-fontsrecommended
+            ;;
+            
+        opensuse*|sles)
+            echo -e "${CYAN}🔄 Updating package list...${NC}"
+            sudo zypper refresh
+            
+            echo -e "${CYAN}📋 Installing system packages...${NC}"
+            sudo zypper install -y \
+                curl \
+                wget \
+                git \
+                gcc \
+                gcc-c++ \
+                make \
+                bc
+            
+            # Install Node.js
+            if ! command -v node &> /dev/null; then
+                echo -e "${CYAN}📦 Installing Node.js...${NC}"
+                sudo zypper install -y nodejs18 npm18
+            fi
+            
+            # Install Python
+            if ! command -v python3 &> /dev/null; then
+                echo -e "${CYAN}🐍 Installing Python...${NC}"
+                sudo zypper install -y python3 python3-pip python3-devel
+            fi
+            
+            # Install LaTeX
+            echo -e "${CYAN}📄 Installing LaTeX (XeTeX)...${NC}"
+            sudo zypper install -y texlive-xetex
+            ;;
+            
+        *)
+            echo -e "${YELLOW}⚠️  Unsupported distribution: $DISTRO${NC}"
+            echo -e "${YELLOW}Please install the following manually:${NC}"
+            echo "  - Node.js 16+"
+            echo "  - Python 3.8+"
+            echo "  - MongoDB"
+            echo "  - XeTeX (texlive-xetex)"
+            read -p "Press Enter to continue assuming dependencies are installed..."
+            ;;
+    esac
+}
 
 # Function to print colored output
 print_status() {
@@ -26,6 +246,160 @@ print_warning() {
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+# MongoDB optimization for Linux
+optimize_mongodb_linux() {
+    print_status "Optimizing MongoDB configuration for development..."
+    
+    # Create optimized MongoDB config
+    sudo mkdir -p /etc/mongodb
+    sudo tee /etc/mongodb/mongod-latex-tracker.conf > /dev/null <<EOF
+# MongoDB Configuration for LaTeX Tracker
+storage:
+  dbPath: /var/lib/mongodb
+  journal:
+    enabled: true
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: 1
+      
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+  logRotate: reopen
+
+net:
+  port: 27017
+  bindIp: 127.0.0.1
+
+processManagement:
+  fork: true
+  pidFilePath: /var/run/mongodb/mongod.pid
+  timeZoneInfo: /usr/share/zoneinfo
+
+# Performance optimizations for development
+operationProfiling:
+  mode: off
+  
+setParameter:
+  enableLocalhostAuthBypass: true
+EOF
+
+    print_success "MongoDB configuration optimized for local development"
+}
+
+# Create systemd services for production deployment
+create_systemd_services() {
+    print_status "Creating systemd services..."
+    
+    CURRENT_USER=$(whoami)
+    CURRENT_DIR=$(pwd)
+    
+    # Backend service
+    sudo tee /etc/systemd/system/latex-tracker-backend.service > /dev/null <<EOF
+[Unit]
+Description=LaTeX Tracker Backend API
+Documentation=https://github.com/Er4564/Latex_Tracker
+After=network.target mongodb.service
+Wants=mongodb.service
+
+[Service]
+Type=simple
+User=$CURRENT_USER
+Group=$CURRENT_USER
+WorkingDirectory=$CURRENT_DIR/backend
+Environment=PATH=$CURRENT_DIR/backend/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=$CURRENT_DIR/backend
+Environment=PYTHONUNBUFFERED=1
+ExecStart=$CURRENT_DIR/backend/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8000 --workers 1
+ExecReload=/bin/kill -HUP \$MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Frontend service (for production builds)
+    sudo tee /etc/systemd/system/latex-tracker-frontend.service > /dev/null <<EOF
+[Unit]
+Description=LaTeX Tracker Frontend
+Documentation=https://github.com/Er4564/Latex_Tracker
+After=network.target latex-tracker-backend.service
+Wants=latex-tracker-backend.service
+
+[Service]
+Type=simple
+User=$CURRENT_USER
+Group=$CURRENT_USER
+WorkingDirectory=$CURRENT_DIR/frontend
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/npx serve -s build -l 3000
+ExecReload=/bin/kill -HUP \$MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Reload systemd and enable services
+    sudo systemctl daemon-reload
+    
+    print_success "Systemd services created"
+    print_status "Services can be managed with:"
+    echo "  sudo systemctl start latex-tracker-backend"
+    echo "  sudo systemctl start latex-tracker-frontend"
+    echo "  sudo systemctl enable latex-tracker-backend latex-tracker-frontend"
+}
+
+# Create Linux-optimized environment files
+create_linux_env() {
+    print_status "Creating Linux-optimized environment files..."
+    
+    # Create necessary directories
+    sudo mkdir -p /tmp/latex_tracker/{uploads,compile}
+    sudo chmod 755 /tmp/latex_tracker
+    sudo chmod 777 /tmp/latex_tracker/{uploads,compile}
+    
+    # Backend .env with Linux paths
+    cat > backend/.env << EOF
+# LaTeX Tracker Backend Configuration
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=latex_tracker
+LOG_LEVEL=INFO
+UPLOAD_DIR=/tmp/latex_tracker/uploads
+COMPILE_DIR=/tmp/latex_tracker/compile
+MAX_FILE_SIZE=10485760
+LATEX_TIMEOUT=30
+ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+DEBUG=true
+EOF
+
+    # Frontend .env
+    cat > frontend/.env << EOF
+# LaTeX Tracker Frontend Configuration
+REACT_APP_BACKEND_URL=http://localhost:8000
+REACT_APP_MAX_FILE_SIZE=10485760
+DISABLE_HOT_RELOAD=false
+GENERATE_SOURCEMAP=true
+FAST_REFRESH=true
+EOF
+
+    print_success "Environment files created with Linux optimizations"
+}
+
+# Initialize
+detect_linux_distro
+check_system_resources
+install_dependencies_by_distro
 
 # Check if running on Ubuntu
 if ! command_exists lsb_release || [[ "$(lsb_release -si)" != "Ubuntu" ]]; then
@@ -194,7 +568,7 @@ EOF
 
 # Create startup scripts optimized for Ubuntu
 create_startup_scripts() {
-    print_status "Creating Ubuntu-optimized startup scripts..."
+    print_status "Creating Linux-optimized startup scripts with enhanced monitoring..."
     
     # Create start script
     cat > start.sh << 'EOF'
@@ -329,8 +703,8 @@ EOF
 
 # Main installation process
 main() {
-    print_status "LaTeX Tracker Ubuntu Installation"
-    print_status "================================="
+    print_status "LaTeX Tracker Linux Multi-Distribution Installation"
+    print_status "================================================="
     
     # Check if we're in the right directory
     if [ ! -f "backend/server.py" ] || [ ! -f "frontend/package.json" ]; then
@@ -338,8 +712,14 @@ main() {
         exit 1
     fi
     
-    # Check and install dependencies
-    check_dependencies
+    # Check and install dependencies (already done during init)
+    print_success "Dependencies checked and installed"
+    
+    # Optimize MongoDB for Linux
+    optimize_mongodb_linux
+    
+    # Create Linux-optimized environment files
+    create_linux_env
     
     # Start MongoDB
     start_mongodb
@@ -348,7 +728,13 @@ main() {
     setup_backend
     setup_frontend
     
-    # Create startup scripts
+    # Create systemd services for production use
+    if [ "$1" = "--production" ]; then
+        create_systemd_services
+        print_status "Production services created. Use 'sudo systemctl start latex-tracker-backend latex-tracker-frontend' to start in production mode."
+    fi
+    
+    # Create startup scripts for development
     create_startup_scripts
     
     print_success "🎉 Installation complete!"

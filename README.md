@@ -30,6 +30,45 @@ A comprehensive web application for organizing and managing LaTeX files from Ove
 - **One-Click Installation**: Automated setup scripts for Linux/Mac/Windows
 - **Docker Support**: Container-based deployment
 - **Manual Setup**: Traditional installation method
+- **Linux Optimized**: Multi-distribution support with systemd integration
+
+## 🐧 Linux Optimization
+
+LaTeX Tracker is fully optimized for Linux environments with comprehensive distribution support:
+
+### Supported Linux Distributions
+- **Ubuntu/Debian** - Full automatic installation
+- **Fedora/CentOS/RHEL** - DNF package manager support
+- **Arch/Manjaro** - Pacman package manager support
+- **openSUSE/SLES** - Zypper package manager support
+- **Generic Linux** - Manual dependency instructions
+
+### Linux-Specific Features
+- **Multi-Distribution Setup**: Automatic detection and package installation
+- **Systemd Integration**: Production-ready service files
+- **Resource Monitoring**: Memory, CPU, and disk usage tracking
+- **Enhanced File Watching**: Optimized for Linux file systems
+- **MongoDB Optimization**: Custom configuration for development
+- **Process Management**: PID-based service tracking
+- **Comprehensive Logging**: Structured logs in `logs/` directory
+
+### Linux Installation
+```bash
+# Clone and install (Ubuntu/Debian/Fedora/Arch/openSUSE)
+git clone https://github.com/Er4564/Latex_Tracker.git
+cd Latex_Tracker
+chmod +x install.sh
+./install.sh
+
+# For production deployment with systemd services
+./install.sh --production
+```
+
+### Linux System Requirements
+- **Memory**: 1GB RAM minimum, 2GB recommended
+- **Storage**: 2GB free space minimum
+- **Dependencies**: Auto-installed (Node.js 16+, Python 3.8+, MongoDB, XeTeX)
+- **Permissions**: sudo access for package installation
 
 ## 🏗️ Project Structure
 

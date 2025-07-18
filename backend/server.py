@@ -29,7 +29,46 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
-app = FastAPI()
+app = FastAPI(
+    title="LaTeX Tracker API",
+    description="Academic LaTeX file management system",
+    version="1.0.0"
+)
+
+# Health check endpoint (outside of /api prefix for monitoring)
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    try:
+        # Test database connection
+        db_status = "connected"
+        try:
+            await db.command("ismaster")
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+        
+        # System information
+        import psutil
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "database": db_status,
+            "system": {
+                "memory_percent": memory.percent,
+                "memory_available_mb": memory.available // 1024 // 1024,
+                "disk_percent": (disk.used / disk.total) * 100,
+                "disk_free_gb": disk.free // 1024 // 1024 // 1024
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
