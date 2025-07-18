@@ -403,38 +403,27 @@ async def export_bulk(file_ids: List[str]):
     if not file_ids:
         raise HTTPException(status_code=400, detail="No files selected")
     
-    # Create temporary directory
-    temp_dir = tempfile.mkdtemp()
+    # Get all files
+    files = await db.tex_files.find({"id": {"$in": file_ids}}).to_list(1000)
     
-    try:
-        # Get all files
-        files = await db.tex_files.find({"id": {"$in": file_ids}}).to_list(1000)
-        
-        if not files:
-            raise HTTPException(status_code=404, detail="No files found")
-        
-        # Create files in temp directory
+    if not files:
+        raise HTTPException(status_code=404, detail="No files found")
+    
+    # Create temporary zip file
+    with tempfile.NamedTemporaryFile(mode='w+b', suffix='.zip', delete=False) as tmp_zip:
+        zip_path = tmp_zip.name
+    
+    # Create zip file
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for file in files:
-            file_path = os.path.join(temp_dir, file["name"])
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(file["content"])
-        
-        # Create zip file
-        zip_path = os.path.join(temp_dir, "latex_files.zip")
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for file in files:
-                file_path = os.path.join(temp_dir, file["name"])
-                zipf.write(file_path, file["name"])
-        
-        return FileResponse(
-            path=zip_path,
-            filename="latex_files.zip",
-            media_type='application/zip'
-        )
+            # Add file content directly to zip without creating temp files
+            zipf.writestr(file["name"], file["content"])
     
-    finally:
-        # Clean up temp directory
-        shutil.rmtree(temp_dir)
+    return FileResponse(
+        path=zip_path,
+        filename="latex_files.zip",
+        media_type='application/zip'
+    )
 
 # Dashboard stats endpoint
 @api_router.get("/stats")
