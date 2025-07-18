@@ -149,6 +149,47 @@ def create_file_version(content: str) -> FileVersion:
         file_size=file_size
     )
 
+async def compile_latex_to_pdf(content: str, filename: str = "document.tex") -> tuple[str, str, str]:
+    """
+    Compile LaTeX content to PDF using xelatex
+    Returns: (status, output, pdf_path_or_error)
+    """
+    # Create temporary directory for compilation
+    with tempfile.TemporaryDirectory() as temp_dir:
+        tex_path = os.path.join(temp_dir, filename)
+        pdf_path = os.path.join(temp_dir, filename.replace('.tex', '.pdf'))
+        
+        try:
+            # Write LaTeX content to file
+            with open(tex_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            # Run xelatex compilation
+            process = await asyncio.create_subprocess_exec(
+                'xelatex',
+                '-interaction=nonstopmode',
+                '-output-directory', temp_dir,
+                tex_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=temp_dir
+            )
+            
+            stdout, stderr = await process.communicate()
+            output = stdout.decode('utf-8') + stderr.decode('utf-8')
+            
+            # Check if PDF was created successfully
+            if process.returncode == 0 and os.path.exists(pdf_path):
+                # Copy PDF to a permanent location
+                permanent_pdf_path = tempfile.mktemp(suffix='.pdf')
+                shutil.copy2(pdf_path, permanent_pdf_path)
+                return "success", output, permanent_pdf_path
+            else:
+                return "error", output, f"Compilation failed with return code {process.returncode}"
+                
+        except Exception as e:
+            return "error", str(e), f"Exception during compilation: {str(e)}"
+
 # Routes
 @api_router.get("/")
 async def root():
