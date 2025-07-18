@@ -61,6 +61,12 @@ class SubjectCreate(BaseModel):
     term_id: str
     color: Optional[str] = "#3B82F6"
 
+class SubjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    term_id: Optional[str] = None
+    color: Optional[str] = None
+
 class FileVersion(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     content: str
