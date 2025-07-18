@@ -37,7 +37,7 @@ api_router = APIRouter(prefix="/api")
 # Models
 class Year(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    year: int  # e.g., 2024
+    year: int  # 1, 2, 3, 4 (university years)
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -52,7 +52,7 @@ class YearUpdate(BaseModel):
 class Semester(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     year_id: str
-    name: str  # "Fall", "Spring", "Summer", "Winter"
+    name: str  # "A", "B" (semester A and B)
     description: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None

@@ -190,7 +190,7 @@ const FilePreview = ({ file, onClose }) => {
 
 const CreateYearModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
-    year: new Date().getFullYear(),
+    year: 1,
     description: ''
   });
 
@@ -200,7 +200,7 @@ const CreateYearModal = ({ isOpen, onClose, onSuccess }) => {
       await axios.post(`${API}/years`, formData);
       onSuccess();
       onClose();
-      setFormData({ year: new Date().getFullYear(), description: '' });
+      setFormData({ year: 1, description: '' });
     } catch (error) {
       console.error('Error creating year:', error);
     }
@@ -210,16 +210,18 @@ const CreateYearModal = ({ isOpen, onClose, onSuccess }) => {
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Year">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Year *</label>
-          <input
-            type="number"
-            min="2000"
-            max="2050"
+          <label className="block text-sm font-medium text-gray-700">Academic Year *</label>
+          <select
             value={formData.year}
             onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
-          />
+          >
+            <option value={1}>Year 1</option>
+            <option value={2}>Year 2</option>
+            <option value={3}>Year 3</option>
+            <option value={4}>Year 4</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Description</label>
@@ -254,7 +256,7 @@ const CreateYearModal = ({ isOpen, onClose, onSuccess }) => {
 const CreateSemesterModal = ({ isOpen, onClose, onSuccess, years }) => {
   const [formData, setFormData] = useState({
     year_id: '',
-    name: 'Fall',
+    name: 'A',
     description: '',
     start_date: '',
     end_date: ''
@@ -266,7 +268,7 @@ const CreateSemesterModal = ({ isOpen, onClose, onSuccess, years }) => {
       await axios.post(`${API}/semesters`, formData);
       onSuccess();
       onClose();
-      setFormData({ year_id: '', name: 'Fall', description: '', start_date: '', end_date: '' });
+      setFormData({ year_id: '', name: 'A', description: '', start_date: '', end_date: '' });
     } catch (error) {
       console.error('Error creating semester:', error);
     }
@@ -276,7 +278,7 @@ const CreateSemesterModal = ({ isOpen, onClose, onSuccess, years }) => {
     <Modal isOpen={isOpen} onClose={onClose} title="Create New Semester">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">Year *</label>
+          <label className="block text-sm font-medium text-gray-700">Academic Year *</label>
           <select
             value={formData.year_id}
             onChange={(e) => setFormData({ ...formData, year_id: e.target.value })}
@@ -285,7 +287,7 @@ const CreateSemesterModal = ({ isOpen, onClose, onSuccess, years }) => {
           >
             <option value="">Select a year</option>
             {years.map(year => (
-              <option key={year.id} value={year.id}>{year.year}</option>
+              <option key={year.id} value={year.id}>Year {year.year}</option>
             ))}
           </select>
         </div>
@@ -297,10 +299,8 @@ const CreateSemesterModal = ({ isOpen, onClose, onSuccess, years }) => {
             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
           >
-            <option value="Fall">Fall</option>
-            <option value="Spring">Spring</option>
-            <option value="Summer">Summer</option>
-            <option value="Winter">Winter</option>
+            <option value="A">Semester A</option>
+            <option value="B">Semester B</option>
           </select>
         </div>
         <div>
@@ -484,7 +484,7 @@ const CreateSubjectModal = ({ isOpen, onClose, onSuccess, semesters }) => {
             <option value="">Select a semester</option>
             {semesters.map(semester => (
               <option key={semester.id} value={semester.id}>
-                {semester.name} {new Date(semester.start_date).getFullYear() || 'No Year'}
+                Semester {semester.name}
               </option>
             ))}
           </select>
@@ -721,7 +721,7 @@ const AddFileModal = ({ isOpen, onClose, onSuccess, years, semesters, subjects }
               >
                 <option value="">Select a year</option>
                 {years.map(year => (
-                  <option key={year.id} value={year.id}>{year.year}</option>
+                  <option key={year.id} value={year.id}>Year {year.year}</option>
                 ))}
               </select>
             </div>
@@ -739,7 +739,7 @@ const AddFileModal = ({ isOpen, onClose, onSuccess, years, semesters, subjects }
               >
                 <option value="">Select a semester</option>
                 {filteredSemesters.map(semester => (
-                  <option key={semester.id} value={semester.id}>{semester.name}</option>
+                  <option key={semester.id} value={semester.id}>Semester {semester.name}</option>
                 ))}
               </select>
             </div>
@@ -963,8 +963,8 @@ function App() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-900">Total Terms</h3>
-          <p className="text-3xl font-bold text-blue-600">{stats.total_terms || 0}</p>
+          <h3 className="text-lg font-semibold text-gray-900">Total Years</h3>
+          <p className="text-3xl font-bold text-blue-600">{stats.total_years || 0}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold text-gray-900">Total Subjects</h3>

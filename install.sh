@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# LaTeX Tracker - One-Click Installation Script
-echo "🚀 Starting LaTeX Tracker Installation..."
+# LaTeX Tracker - Ubuntu Optimized Installation Script
+echo "🚀 Starting LaTeX Tracker Installation for Ubuntu..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -27,85 +27,91 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if running on supported OS
-OS="$(uname -s)"
-case "${OS}" in
-    Linux*)     MACHINE=Linux;;
-    Darwin*)    MACHINE=Mac;;
-    CYGWIN*)    MACHINE=Cygwin;;
-    MINGW*)     MACHINE=MinGw;;
-    *)          MACHINE="UNKNOWN:${OS}"
-esac
-
-print_status "Detected OS: $MACHINE"
+# Check if running on Ubuntu
+if ! command_exists lsb_release || [[ "$(lsb_release -si)" != "Ubuntu" ]]; then
+    print_warning "This script is optimized for Ubuntu. It may work on other Debian-based systems."
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
 
 # Function to check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Install system dependencies based on OS
-install_system_deps() {
-    print_status "Installing system dependencies..."
+# Install system dependencies for Ubuntu
+install_ubuntu_deps() {
+    print_status "Installing system dependencies for Ubuntu..."
     
-    if [[ "$MACHINE" == "Linux" ]]; then
-        # Check for package manager
-        if command_exists apt-get; then
-            sudo apt-get update
-            sudo apt-get install -y python3 python3-pip python3-venv nodejs npm mongodb texlive-xetex texlive-latex-extra
-        elif command_exists yum; then
-            sudo yum install -y python3 python3-pip nodejs npm mongodb-server texlive-xetex
-        elif command_exists pacman; then
-            sudo pacman -S python python-pip nodejs npm mongodb texlive-core texlive-latexextra
-        else
-            print_error "No supported package manager found. Please install manually:"
-            print_error "- Python 3.8+"
-            print_error "- Node.js 16+"
-            print_error "- MongoDB"
-            print_error "- LaTeX (texlive-xetex)"
-            exit 1
-        fi
-    elif [[ "$MACHINE" == "Mac" ]]; then
-        if command_exists brew; then
-            brew install python3 node mongodb/brew/mongodb-community mactex
-        else
-            print_error "Homebrew not found. Please install it first: https://brew.sh/"
-            exit 1
-        fi
-    else
-        print_warning "Unsupported OS. Please install dependencies manually."
+    # Update package list
+    sudo apt-get update -y
+    
+    # Install essential packages
+    sudo apt-get install -y \
+        python3 \
+        python3-pip \
+        python3-venv \
+        nodejs \
+        npm \
+        mongodb \
+        texlive-xetex \
+        texlive-latex-extra \
+        texlive-fonts-recommended \
+        curl \
+        wget \
+        git
+    
+    # Install latest Node.js (version 18+) if needed
+    NODE_VERSION=$(node --version 2>/dev/null | sed 's/v//' | cut -d. -f1)
+    if [[ -z "$NODE_VERSION" ]] || [[ "$NODE_VERSION" -lt 16 ]]; then
+        print_status "Installing Node.js 18..."
+        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+        sudo apt-get install -y nodejs
     fi
+    
+    # Start and enable MongoDB
+    sudo systemctl start mongod
+    sudo systemctl enable mongod
+    
+    print_success "Ubuntu dependencies installed successfully"
 }
 
-# Check and install Python
-check_python() {
+# Check and install dependencies
+check_dependencies() {
+    print_status "Checking dependencies..."
+    
+    local missing_deps=()
+    
+    # Check Python
     if command_exists python3; then
         PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
         print_success "Python found: $(python3 --version)"
     else
-        print_error "Python 3 not found. Installing..."
-        install_system_deps
+        missing_deps+=("python3")
     fi
-}
-
-# Check and install Node.js
-check_node() {
+    
+    # Check Node.js
     if command_exists node; then
         NODE_VERSION=$(node --version)
         print_success "Node.js found: $NODE_VERSION"
     else
-        print_error "Node.js not found. Installing..."
-        install_system_deps
+        missing_deps+=("nodejs")
     fi
-}
-
-# Check and install MongoDB
-check_mongodb() {
-    if command_exists mongod || command_exists mongo; then
+    
+    # Check MongoDB
+    if command_exists mongod; then
         print_success "MongoDB found"
     else
-        print_warning "MongoDB not found. Installing..."
-        install_system_deps
+        missing_deps+=("mongodb")
+    fi
+    
+    # Install missing dependencies
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        print_status "Installing missing dependencies: ${missing_deps[*]}"
+        install_ubuntu_deps
     fi
 }
 
@@ -113,20 +119,20 @@ check_mongodb() {
 start_mongodb() {
     print_status "Starting MongoDB..."
     
-    if [[ "$MACHINE" == "Linux" ]]; then
-        if command_exists systemctl; then
-            sudo systemctl start mongod
-            sudo systemctl enable mongod
+    if ! pgrep -x "mongod" > /dev/null; then
+        sudo systemctl start mongod
+        sleep 3
+        
+        if pgrep -x "mongod" > /dev/null; then
+            print_success "MongoDB started successfully"
         else
-            sudo service mongod start
+            print_error "Failed to start MongoDB"
+            print_status "You can use MongoDB Atlas (cloud) instead"
+            print_status "Update MONGO_URL in backend/.env to use cloud MongoDB"
         fi
-    elif [[ "$MACHINE" == "Mac" ]]; then
-        brew services start mongodb/brew/mongodb-community
+    else
+        print_success "MongoDB already running"
     fi
-    
-    # Wait for MongoDB to start
-    sleep 3
-    print_success "MongoDB started"
 }
 
 # Setup backend
@@ -167,6 +173,9 @@ setup_frontend() {
     
     cd frontend
     
+    # Clear npm cache
+    npm cache clean --force
+    
     # Install dependencies
     npm install
     
@@ -183,9 +192,9 @@ EOF
     print_success "Frontend setup complete"
 }
 
-# Create startup scripts
+# Create startup scripts optimized for Ubuntu
 create_startup_scripts() {
-    print_status "Creating startup scripts..."
+    print_status "Creating Ubuntu-optimized startup scripts..."
     
     # Create start script
     cat > start.sh << 'EOF'
@@ -193,14 +202,10 @@ create_startup_scripts() {
 
 echo "🚀 Starting LaTeX Tracker..."
 
-# Start MongoDB if not running
+# Check if MongoDB is running
 if ! pgrep -x "mongod" > /dev/null; then
     echo "Starting MongoDB..."
-    if [[ "$(uname -s)" == "Linux" ]]; then
-        sudo systemctl start mongod
-    elif [[ "$(uname -s)" == "Darwin" ]]; then
-        brew services start mongodb/brew/mongodb-community
-    fi
+    sudo systemctl start mongod
     sleep 3
 fi
 
@@ -208,30 +213,40 @@ fi
 echo "Starting backend server..."
 cd backend
 source venv/bin/activate
-uvicorn server:app --reload --host 0.0.0.0 --port 8000 &
+nohup uvicorn server:app --reload --host 127.0.0.1 --port 8000 > ../backend.log 2>&1 &
 BACKEND_PID=$!
+echo $BACKEND_PID > ../backend.pid
 cd ..
 
 # Wait for backend to start
 sleep 5
 
+# Check if backend started successfully
+if ps -p $BACKEND_PID > /dev/null; then
+    echo "✅ Backend started successfully (PID: $BACKEND_PID)"
+else
+    echo "❌ Backend failed to start. Check backend.log for details."
+    exit 1
+fi
+
 # Start frontend
 echo "Starting frontend..."
 cd frontend
-npm start &
+nohup npm start > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
+echo $FRONTEND_PID > ../frontend.pid
 cd ..
 
-echo "✅ LaTeX Tracker is starting up!"
+# Wait for frontend to start
+sleep 10
+
+echo "✅ LaTeX Tracker is running!"
 echo "📱 Frontend: http://localhost:3000"
 echo "🔧 Backend API: http://localhost:8000"
 echo "📚 API Docs: http://localhost:8000/docs"
+echo "📋 Logs: backend.log and frontend.log"
 echo ""
-echo "Press Ctrl+C to stop all services"
-
-# Wait for user to stop
-trap 'echo "Stopping services..."; kill $BACKEND_PID $FRONTEND_PID; exit' INT
-wait
+echo "To stop the application, run: ./stop.sh"
 EOF
 
     chmod +x start.sh
@@ -242,23 +257,79 @@ EOF
 
 echo "🛑 Stopping LaTeX Tracker..."
 
-# Kill backend processes
-pkill -f "uvicorn server:app"
+# Stop backend
+if [ -f backend.pid ]; then
+    BACKEND_PID=$(cat backend.pid)
+    if ps -p $BACKEND_PID > /dev/null; then
+        kill $BACKEND_PID
+        echo "Backend stopped (PID: $BACKEND_PID)"
+    fi
+    rm -f backend.pid
+fi
 
-# Kill frontend processes
-pkill -f "npm start"
+# Stop frontend
+if [ -f frontend.pid ]; then
+    FRONTEND_PID=$(cat frontend.pid)
+    if ps -p $FRONTEND_PID > /dev/null; then
+        kill $FRONTEND_PID
+        echo "Frontend stopped (PID: $FRONTEND_PID)"
+    fi
+    rm -f frontend.pid
+fi
+
+# Fallback: kill any remaining processes
+pkill -f "uvicorn server:app" 2>/dev/null
+pkill -f "npm start" 2>/dev/null
 
 echo "✅ All services stopped"
 EOF
 
     chmod +x stop.sh
     
-    print_success "Startup scripts created"
+    # Create status script
+    cat > status.sh << 'EOF'
+#!/bin/bash
+
+echo "� LaTeX Tracker Status"
+echo "======================="
+
+# Check MongoDB
+if pgrep -x "mongod" > /dev/null; then
+    echo "✅ MongoDB: Running"
+else
+    echo "❌ MongoDB: Stopped"
+fi
+
+# Check backend
+if [ -f backend.pid ] && ps -p $(cat backend.pid) > /dev/null; then
+    echo "✅ Backend: Running (PID: $(cat backend.pid))"
+    echo "   URL: http://localhost:8000"
+else
+    echo "❌ Backend: Stopped"
+fi
+
+# Check frontend
+if [ -f frontend.pid ] && ps -p $(cat frontend.pid) > /dev/null; then
+    echo "✅ Frontend: Running (PID: $(cat frontend.pid))"
+    echo "   URL: http://localhost:3000"
+else
+    echo "❌ Frontend: Stopped"
+fi
+
+echo ""
+echo "Recent logs:"
+echo "Backend: tail backend.log"
+echo "Frontend: tail frontend.log"
+EOF
+
+    chmod +x status.sh
+    
+    print_success "Ubuntu-optimized scripts created"
 }
 
 # Main installation process
 main() {
-    print_status "LaTeX Tracker One-Click Installer"
+    print_status "LaTeX Tracker Ubuntu Installation"
     print_status "================================="
     
     # Check if we're in the right directory
@@ -267,10 +338,8 @@ main() {
         exit 1
     fi
     
-    # Check dependencies
-    check_python
-    check_node
-    check_mongodb
+    # Check and install dependencies
+    check_dependencies
     
     # Start MongoDB
     start_mongodb
@@ -284,16 +353,17 @@ main() {
     
     print_success "🎉 Installation complete!"
     print_status ""
-    print_status "To start the application:"
-    print_status "  ./start.sh"
-    print_status ""
-    print_status "To stop the application:"
-    print_status "  ./stop.sh"
+    print_status "Quick commands:"
+    print_status "  Start:  ./start.sh"
+    print_status "  Stop:   ./stop.sh"
+    print_status "  Status: ./status.sh"
     print_status ""
     print_status "The application will be available at:"
     print_status "  Frontend: http://localhost:3000"
     print_status "  Backend API: http://localhost:8000"
     print_status "  API Documentation: http://localhost:8000/docs"
+    print_status ""
+    print_status "Logs are saved to backend.log and frontend.log"
 }
 
 # Run main function

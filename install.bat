@@ -1,140 +1,139 @@
-#!/bin/bash
+@echo off
+REM LaTeX Tracker - Windows One-Click Installation Script
 
-# LaTeX Tracker - Linux One-Click Installation Script
+echo 🚀 Starting LaTeX Tracker Installation for Windows...
 
-echo "🚀 Starting LaTeX Tracker Installation for Linux..."
+REM Check if we're in the right directory
+if not exist "backend\server.py" (
+    echo ❌ ERROR: Please run this script from the LaTeX_Tracker root directory
+    pause
+    exit /b 1
+)
 
-# Check if we're in the right directory
-if [[ ! -f "backend/server.py" ]]; then
-    echo "❌ ERROR: Please run this script from the LaTeX_Tracker root directory"
-    read -p "Press Enter to exit..."
-    exit 1
-fi
+if not exist "frontend\package.json" (
+    echo ❌ ERROR: Please run this script from the LaTeX_Tracker root directory
+    pause
+    exit /b 1
+)
 
-if [[ ! -f "frontend/package.json" ]]; then
-    echo "❌ ERROR: Please run this script from the LaTeX_Tracker root directory"
-    read -p "Press Enter to exit..."
-    exit 1
-fi
+REM Check for Python
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ❌ Python not found. Please install Python 3.8+ from https://python.org
+    pause
+    exit /b 1
+) else (
+    echo ✅ Python found
+)
 
-# Check for Python
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python not found. Please install Python 3.8+ from https://python.org"
-    read -p "Press Enter to exit..."
-    exit 1
-else
-    echo "✅ Python found"
-fi
+REM Check for Node.js
+node --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ❌ Node.js not found. Please install Node.js 16+ from https://nodejs.org
+    pause
+    exit /b 1
+) else (
+    echo ✅ Node.js found
+)
 
-# Check for Node.js
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js not found. Please install Node.js 16+ from https://nodejs.org"
-    read -p "Press Enter to exit..."
-    exit 1
-else
-    echo "✅ Node.js found"
-fi
+REM Check for MongoDB (optional - will use cloud MongoDB if not found)
+mongod --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ⚠️  MongoDB not found locally. You can:
+    echo    1. Install MongoDB Community Server from https://mongodb.com
+    echo    2. Use MongoDB Atlas (cloud) - update MONGO_URL in backend\.env
+)
 
-# Check for MongoDB (optional - will use cloud MongoDB if not found)
-if ! command -v mongod &> /dev/null; then
-    echo "⚠️  MongoDB not found locally. You can:"
-    echo "    1. Install MongoDB Community Server from https://mongodb.com"
-    echo "    2. Use MongoDB Atlas (cloud) - update MONGO_URL in backend/.env"
-fi
+echo.
+echo 📦 Setting up backend...
+cd backend
 
-echo
-echo "📦 Setting up backend..."
-cd backend || exit
+REM Create virtual environment
+python -m venv venv
 
-# Create virtual environment
-python3 -m venv venv
+REM Activate virtual environment
+call venv\Scripts\activate.bat
 
-# Activate virtual environment
-source venv/bin/activate
+REM Upgrade pip
+python -m pip install --upgrade pip
 
-# Upgrade pip
-python3 -m pip install --upgrade pip
-
-# Install dependencies
+REM Install dependencies
 pip install -r requirements.txt
 
-# Create .env file if it doesn't exist
-if [[ ! -f ".env" ]]; then
-    echo "📝 Creating backend .env file..."
-    echo "MONGO_URL=mongodb://localhost:27017" > .env
-    echo "DB_NAME=latex_tracker" >> .env
-    echo "✅ Backend .env file created"
-fi
+REM Create .env file if it doesn't exist
+if not exist ".env" (
+    echo 📝 Creating backend .env file...
+    echo MONGO_URL=mongodb://localhost:27017> .env
+    echo DB_NAME=latex_tracker>> .env
+    echo ✅ Backend .env file created
+)
 
 cd ..
 
-echo
-echo "🎨 Setting up frontend..."
-cd frontend || exit
+echo.
+echo 🎨 Setting up frontend...
+cd frontend
 
-# Install dependencies
+REM Install dependencies
 npm install
 
-# Create .env file if it doesn't exist
-if [[ ! -f ".env" ]]; then
-    echo "📝 Creating frontend .env file..."
-    echo "REACT_APP_BACKEND_URL=http://localhost:8000" > .env
-    echo "✅ Frontend .env file created"
-fi
+REM Create .env file if it doesn't exist
+if not exist ".env" (
+    echo 📝 Creating frontend .env file...
+    echo REACT_APP_BACKEND_URL=http://localhost:8000> .env
+    echo ✅ Frontend .env file created
+)
 
 cd ..
 
-echo
-echo "🔧 Creating startup scripts..."
+echo.
+echo 🔧 Creating startup scripts...
 
-# Create Linux start script
-cat <<EOL > start.sh
-#!/bin/bash
-echo "🚀 Starting LaTeX Tracker..."
+REM Create Windows start script
+echo @echo off> start.bat
+echo echo 🚀 Starting LaTeX Tracker...>> start.bat
+echo.>> start.bat
+echo echo Starting backend server...>> start.bat
+echo cd backend>> start.bat
+echo call venv\Scripts\activate.bat>> start.bat
+echo start /B uvicorn server:app --reload --host 0.0.0.0 --port 8000>> start.bat
+echo cd ..>> start.bat
+echo.>> start.bat
+echo timeout /t 5 /nobreak ^> nul>> start.bat
+echo.>> start.bat
+echo echo Starting frontend...>> start.bat
+echo cd frontend>> start.bat
+echo start npm start>> start.bat
+echo cd ..>> start.bat
+echo.>> start.bat
+echo echo ✅ LaTeX Tracker is starting up!>> start.bat
+echo echo 📱 Frontend: http://localhost:3000>> start.bat
+echo echo 🔧 Backend API: http://localhost:8000>> start.bat
+echo echo 📚 API Docs: http://localhost:8000/docs>> start.bat
+echo echo.>> start.bat
+echo echo Press any key to close this window...>> start.bat
+echo pause>> start.bat
 
-echo
-echo "Starting backend server..."
-cd backend
-source venv/bin/activate
-nohup uvicorn server:app --reload --host 0.0.0.0 --port 8000 &> backend.log &
-cd ..
+REM Create Windows stop script
+echo @echo off> stop.bat
+echo echo 🛑 Stopping LaTeX Tracker...>> stop.bat
+echo taskkill /F /IM "uvicorn.exe" 2^>nul>> stop.bat
+echo taskkill /F /IM "node.exe" 2^>nul>> stop.bat
+echo echo ✅ All services stopped>> stop.bat
+echo pause>> stop.bat
 
-echo
-echo "Starting frontend..."
-cd frontend
-nohup npm start &> frontend.log &
-cd ..
-
-echo
-echo "✅ LaTeX Tracker is starting up!"
-echo "📱 Frontend: http://localhost:3000"
-echo "🔧 Backend API: http://localhost:8000"
-echo "📚 API Docs: http://localhost:8000/docs"
-EOL
-chmod +x start.sh
-
-# Create Linux stop script
-cat <<EOL > stop.sh
-#!/bin/bash
-echo "🛑 Stopping LaTeX Tracker..."
-pkill -f "uvicorn server:app"
-pkill -f "npm start"
-echo "✅ All services stopped"
-EOL
-chmod +x stop.sh
-
-echo
-echo "🎉 Installation complete!"
-echo
-echo "To start the application:"
-echo "  Run: ./start.sh"
-echo
-echo "To stop the application:"
-echo "  Run: ./stop.sh"
-echo
-echo "The application will be available at:"
-echo "  Frontend: http://localhost:3000"
-echo "  Backend API: http://localhost:8000"
-echo "  API Documentation: http://localhost:8000/docs"
-echo
-read -p "Press Enter to exit..."
+echo.
+echo 🎉 Installation complete!
+echo.
+echo To start the application:
+echo   Double-click start.bat or run: start.bat
+echo.
+echo To stop the application:
+echo   Double-click stop.bat or run: stop.bat
+echo.
+echo The application will be available at:
+echo   Frontend: http://localhost:3000
+echo   Backend API: http://localhost:8000
+echo   API Documentation: http://localhost:8000/docs
+echo.
+pause
