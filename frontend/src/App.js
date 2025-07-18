@@ -188,6 +188,171 @@ const FilePreview = ({ file, onClose }) => {
   );
 };
 
+const CreateYearModal = ({ isOpen, onClose, onSuccess }) => {
+  const [formData, setFormData] = useState({
+    year: new Date().getFullYear(),
+    description: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/years`, formData);
+      onSuccess();
+      onClose();
+      setFormData({ year: new Date().getFullYear(), description: '' });
+    } catch (error) {
+      console.error('Error creating year:', error);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Create New Year">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Year *</label>
+          <input
+            type="number"
+            min="2000"
+            max="2050"
+            value={formData.year}
+            onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            rows="3"
+            placeholder="Optional description for this academic year"
+          />
+        </div>
+        <div className="flex space-x-4">
+          <button
+            type="submit"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Create Year
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const CreateSemesterModal = ({ isOpen, onClose, onSuccess, years }) => {
+  const [formData, setFormData] = useState({
+    year_id: '',
+    name: 'Fall',
+    description: '',
+    start_date: '',
+    end_date: ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/semesters`, formData);
+      onSuccess();
+      onClose();
+      setFormData({ year_id: '', name: 'Fall', description: '', start_date: '', end_date: '' });
+    } catch (error) {
+      console.error('Error creating semester:', error);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Create New Semester">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Year *</label>
+          <select
+            value={formData.year_id}
+            onChange={(e) => setFormData({ ...formData, year_id: e.target.value })}
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            required
+          >
+            <option value="">Select a year</option>
+            {years.map(year => (
+              <option key={year.id} value={year.id}>{year.year}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Semester *</label>
+          <select
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            required
+          >
+            <option value="Fall">Fall</option>
+            <option value="Spring">Spring</option>
+            <option value="Summer">Summer</option>
+            <option value="Winter">Winter</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            rows="2"
+            placeholder="Optional description"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <input
+              type="date"
+              value={formData.start_date}
+              onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">End Date</label>
+            <input
+              type="date"
+              value={formData.end_date}
+              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+              className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+        <div className="flex space-x-4">
+          <button
+            type="submit"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Create Semester
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
 const CreateTermModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -275,11 +440,11 @@ const CreateTermModal = ({ isOpen, onClose, onSuccess }) => {
   );
 };
 
-const CreateSubjectModal = ({ isOpen, onClose, onSuccess, terms }) => {
+const CreateSubjectModal = ({ isOpen, onClose, onSuccess, semesters }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    term_id: '',
+    semester_id: '',
     color: '#3B82F6'
   });
 
@@ -289,7 +454,7 @@ const CreateSubjectModal = ({ isOpen, onClose, onSuccess, terms }) => {
       await axios.post(`${API}/subjects`, formData);
       onSuccess();
       onClose();
-      setFormData({ name: '', description: '', term_id: '', color: '#3B82F6' });
+      setFormData({ name: '', description: '', semester_id: '', color: '#3B82F6' });
     } catch (error) {
       console.error('Error creating subject:', error);
     }
@@ -309,16 +474,18 @@ const CreateSubjectModal = ({ isOpen, onClose, onSuccess, terms }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">Term *</label>
+          <label className="block text-sm font-medium text-gray-700">Semester *</label>
           <select
-            value={formData.term_id}
-            onChange={(e) => setFormData({ ...formData, term_id: e.target.value })}
+            value={formData.semester_id}
+            onChange={(e) => setFormData({ ...formData, semester_id: e.target.value })}
             className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
             required
           >
-            <option value="">Select a term</option>
-            {terms.map(term => (
-              <option key={term.id} value={term.id}>{term.name}</option>
+            <option value="">Select a semester</option>
+            {semesters.map(semester => (
+              <option key={semester.id} value={semester.id}>
+                {semester.name} {new Date(semester.start_date).getFullYear() || 'No Year'}
+              </option>
             ))}
           </select>
         </div>
@@ -360,41 +527,91 @@ const CreateSubjectModal = ({ isOpen, onClose, onSuccess, terms }) => {
   );
 };
 
-const AddFileModal = ({ isOpen, onClose, onSuccess, terms, subjects }) => {
+const AddFileModal = ({ isOpen, onClose, onSuccess, years, semesters, subjects }) => {
   const [activeTab, setActiveTab] = useState('manual');
   const [formData, setFormData] = useState({
     name: '',
-    term_id: '',
+    year_id: '',
+    semester_id: '',
     subject_id: '',
     content: '',
     tags: '',
     notes: '',
     source_type: 'manual'
   });
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [multiFileMode, setMultiFileMode] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const data = {
-        ...formData,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        source_type: activeTab
-      };
-      await axios.post(`${API}/files`, data);
+      if (multiFileMode && selectedFiles.length > 0) {
+        // Multi-file upload
+        const multiUploadData = {
+          files: selectedFiles.map(file => ({
+            name: file.name,
+            content: file.content
+          })),
+          subject_id: formData.subject_id,
+          semester_id: formData.semester_id,
+          tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+          notes: formData.notes
+        };
+        await axios.post(`${API}/files/multi-upload`, multiUploadData);
+      } else {
+        // Single file upload
+        const data = {
+          ...formData,
+          tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+          source_type: activeTab
+        };
+        await axios.post(`${API}/files`, data);
+      }
       onSuccess();
       onClose();
-      setFormData({
-        name: '',
-        term_id: '',
-        subject_id: '',
-        content: '',
-        tags: '',
-        notes: '',
-        source_type: 'manual'
-      });
+      resetForm();
     } catch (error) {
       console.error('Error creating file:', error);
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      year_id: '',
+      semester_id: '',
+      subject_id: '',
+      content: '',
+      tags: '',
+      notes: '',
+      source_type: 'manual'
+    });
+    setSelectedFiles([]);
+    setMultiFileMode(false);
+  };
+
+  const handleMultipleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    const fileContents = await Promise.all(
+      files.map(file => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve({
+              name: file.name,
+              content: e.target.result,
+              size: file.size
+            });
+          };
+          reader.readAsText(file);
+        });
+      })
+    );
+
+    setSelectedFiles(fileContents);
+    setMultiFileMode(true);
   };
 
   const handleFileUpload = async (e) => {
@@ -404,7 +621,7 @@ const AddFileModal = ({ isOpen, onClose, onSuccess, terms, subjects }) => {
     const formDataUpload = new FormData();
     formDataUpload.append('file', file);
     formDataUpload.append('subject_id', formData.subject_id);
-    formDataUpload.append('term_id', formData.term_id);
+    formDataUpload.append('semester_id', formData.semester_id);
     formDataUpload.append('tags', formData.tags);
     formDataUpload.append('notes', formData.notes);
 
@@ -416,13 +633,18 @@ const AddFileModal = ({ isOpen, onClose, onSuccess, terms, subjects }) => {
       });
       onSuccess();
       onClose();
+      resetForm();
     } catch (error) {
       console.error('Error uploading file:', error);
     }
   };
 
+  const filteredSemesters = semesters.filter(semester => 
+    !formData.year_id || semester.year_id === formData.year_id
+  );
+
   const filteredSubjects = subjects.filter(subject => 
-    !formData.term_id || subject.term_id === formData.term_id
+    !formData.semester_id || subject.semester_id === formData.semester_id
   );
 
   return (
@@ -463,19 +685,61 @@ const AddFileModal = ({ isOpen, onClose, onSuccess, terms, subjects }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Multi-file mode toggle */}
+          {activeTab === 'manual' && (
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="multiFileMode"
+                checked={multiFileMode}
+                onChange={(e) => {
+                  setMultiFileMode(e.target.checked);
+                  if (!e.target.checked) setSelectedFiles([]);
+                }}
+                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              />
+              <label htmlFor="multiFileMode" className="text-sm font-medium text-gray-700">
+                Upload multiple files
+              </label>
+            </div>
+          )}
+
           {/* Common fields */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Term *</label>
+              <label className="block text-sm font-medium text-gray-700">Year *</label>
               <select
-                value={formData.term_id}
-                onChange={(e) => setFormData({ ...formData, term_id: e.target.value, subject_id: '' })}
+                value={formData.year_id}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  year_id: e.target.value, 
+                  semester_id: '', 
+                  subject_id: '' 
+                })}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                 required
               >
-                <option value="">Select a term</option>
-                {terms.map(term => (
-                  <option key={term.id} value={term.id}>{term.name}</option>
+                <option value="">Select a year</option>
+                {years.map(year => (
+                  <option key={year.id} value={year.id}>{year.year}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Semester *</label>
+              <select
+                value={formData.semester_id}
+                onChange={(e) => setFormData({ 
+                  ...formData, 
+                  semester_id: e.target.value, 
+                  subject_id: '' 
+                })}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">Select a semester</option>
+                {filteredSemesters.map(semester => (
+                  <option key={semester.id} value={semester.id}>{semester.name}</option>
                 ))}
               </select>
             </div>
