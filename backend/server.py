@@ -503,6 +503,77 @@ async def get_stats():
         "recent_files": [TexFile(**file) for file in recent_files]
     }
 
+# Compilation endpoint
+@api_router.post("/files/{file_id}/compile")
+async def compile_file(file_id: str):
+    """Compile a LaTeX file to PDF"""
+    file = await db.tex_files.find_one({"id": file_id})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Compile the LaTeX content
+    status, output, result = await compile_latex_to_pdf(file["content"], file["name"])
+    
+    # Update file with compilation results
+    file_obj = TexFile(**file)
+    file_obj.compilation_status = status
+    file_obj.compilation_output = output
+    file_obj.updated_at = datetime.utcnow()
+    
+    await db.tex_files.replace_one({"id": file_id}, file_obj.dict())
+    
+    if status == "success":
+        return {
+            "status": status,
+            "message": "Compilation successful",
+            "pdf_available": True,
+            "output": output
+        }
+    else:
+        return {
+            "status": status,
+            "message": "Compilation failed",
+            "pdf_available": False,
+            "output": output,
+            "error": result
+        }
+
+# PDF download endpoint
+@api_router.get("/files/{file_id}/pdf")
+async def get_pdf(file_id: str):
+    """Get compiled PDF for a file"""
+    file = await db.tex_files.find_one({"id": file_id})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    if file.get("compilation_status") != "success":
+        # Try to compile first
+        status, output, result = await compile_latex_to_pdf(file["content"], file["name"])
+        
+        # Update file with compilation results
+        file_obj = TexFile(**file)
+        file_obj.compilation_status = status
+        file_obj.compilation_output = output
+        file_obj.updated_at = datetime.utcnow()
+        
+        await db.tex_files.replace_one({"id": file_id}, file_obj.dict())
+        
+        if status != "success":
+            raise HTTPException(status_code=400, detail=f"Compilation failed: {result}")
+        
+        pdf_path = result
+    else:
+        # Re-compile to get fresh PDF
+        status, output, pdf_path = await compile_latex_to_pdf(file["content"], file["name"])
+        if status != "success":
+            raise HTTPException(status_code=400, detail=f"Compilation failed: {pdf_path}")
+    
+    return FileResponse(
+        path=pdf_path,
+        filename=file["name"].replace('.tex', '.pdf'),
+        media_type='application/pdf'
+    )
+
 # Include the router in the main app
 app.include_router(api_router)
 
