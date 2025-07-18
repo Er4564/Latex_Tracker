@@ -762,13 +762,31 @@ const AddFileModal = ({ isOpen, onClose, onSuccess, years, semesters, subjects }
           {/* Tab-specific content */}
           {activeTab === 'manual' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Upload .tex File</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Upload .tex File{multiFileMode ? 's' : ''}
+              </label>
               <input
                 type="file"
                 accept=".tex"
-                onChange={handleFileUpload}
+                multiple={multiFileMode}
+                onChange={multiFileMode ? handleMultipleFileUpload : handleFileUpload}
                 className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
+              {multiFileMode && selectedFiles.length > 0 && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Selected Files ({selectedFiles.length}):
+                  </h4>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex justify-between items-center text-xs">
+                        <span className="truncate">{file.name}</span>
+                        <span className="text-gray-500">{(file.size / 1024).toFixed(1)} KB</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

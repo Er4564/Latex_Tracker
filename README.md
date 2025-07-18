@@ -1,11 +1,12 @@
 # LaTeX File Tracker
 
-A comprehensive web application for organizing and managing LaTeX files from Overleaf projects. Track your academic documents with multi-level organization, version history, compilation status, and powerful search capabilities.
+A comprehensive web application for organizing and managing LaTeX files from Overleaf projects. Track your academic documents with hierarchical organization (Year → Semester → Subject → Files), version history, compilation status, and powerful search capabilities.
 
 ## 🚀 Features
 
 ### Core Functionality
-- **Multi-level Organization**: Organize files by Term/Semester → Subject → Files
+- **Hierarchical Organization**: Organize files by Year → Semester → Subject → Files
+- **Multiple File Upload**: Upload single files or multiple files at once
 - **File Management**: Upload, create, edit, and preview LaTeX files
 - **Version History**: Track changes with automatic versioning
 - **LaTeX Compilation**: Automatic PDF compilation with status tracking
@@ -14,37 +15,49 @@ A comprehensive web application for organizing and managing LaTeX files from Ove
 - **Dashboard Analytics**: View statistics and recent activity
 
 ### File Input Methods
-- **Manual Upload**: Upload existing .tex files
+- **Manual Upload**: Upload single or multiple .tex files
 - **Copy & Paste**: Directly paste LaTeX content
+- **Multi-File Selection**: Select and upload multiple files simultaneously
 - **Git Integration**: (Coming Soon) Sync with Overleaf via Git
 
-### File Tracking
-- Word count and file size tracking
-- Last modified dates
-- Compilation status (Success/Error/Unknown)
-- Custom tags and notes
-- Source type tracking
+### Academic Organization
+- **Year Management**: Create and manage academic years (2024, 2025, etc.)
+- **Semester System**: Fall, Spring, Summer, Winter semesters per year
+- **Subject Organization**: Color-coded subjects within each semester
+- **File Tracking**: Word count, file size, compilation status, tags, and notes
+
+### Installation Options
+- **One-Click Installation**: Automated setup scripts for Linux/Mac/Windows
+- **Docker Support**: Container-based deployment
+- **Manual Setup**: Traditional installation method
 
 ## 🏗️ Project Structure
 
 ```
 Latex_Tracker/
-├── backend/                 # FastAPI backend server
-│   ├── server.py           # Main API server with all endpoints
-│   └── requirements.txt    # Python dependencies
-├── frontend/               # React frontend application
+├── install.sh              # Linux/Mac one-click installer
+├── install.bat             # Windows one-click installer
+├── start.sh                # Quick start script (auto-generated)
+├── stop.sh                 # Stop services script (auto-generated)
+├── docker-compose.yml      # Docker container setup
+├── backend/                # FastAPI backend server
+│   ├── server.py          # Main API server with all endpoints
+│   ├── requirements.txt   # Python dependencies
+│   └── Dockerfile         # Docker configuration
+├── frontend/              # React frontend application
 │   ├── src/
-│   │   ├── App.js         # Main React component
-│   │   ├── App.css        # Styling with Tailwind CSS
-│   │   ├── index.js       # React entry point
-│   │   └── index.css      # Global styles
+│   │   ├── App.js        # Main React component with new structure
+│   │   ├── App.css       # Styling with Tailwind CSS
+│   │   ├── index.js      # React entry point
+│   │   └── index.css     # Global styles
 │   ├── public/
-│   │   └── index.html     # HTML template
-│   ├── package.json       # Node.js dependencies
+│   │   └── index.html    # HTML template
+│   ├── package.json      # Node.js dependencies
 │   ├── tailwind.config.js # Tailwind CSS configuration
-│   └── craco.config.js    # Create React App configuration
-├── tests/                  # Test files and utilities
-└── README.md              # This file
+│   ├── craco.config.js   # Create React App configuration
+│   └── Dockerfile        # Docker configuration
+├── tests/                 # Test files and utilities
+└── README.md             # This file
 ```
 
 ## 🛠️ Technology Stack
@@ -72,13 +85,38 @@ Latex_Tracker/
 
 ## 📦 Installation & Setup
 
-### Prerequisites
+### 🚀 One-Click Installation (Recommended)
+
+#### Linux/Mac
+```bash
+# Make the script executable and run
+chmod +x install.sh
+./install.sh
+```
+
+#### Windows
+```batch
+# Double-click install.bat or run in Command Prompt
+install.bat
+```
+
+#### Docker (Cross-platform)
+```bash
+# Clone the repository and run with Docker
+git clone <repository-url>
+cd Latex_Tracker
+docker-compose up -d
+```
+
+### Manual Installation
+
+#### Prerequisites
 - Python 3.8+
 - Node.js 16+
 - MongoDB database
 - LaTeX distribution (for compilation features)
 
-### Backend Setup
+#### Backend Setup
 
 1. Navigate to the backend directory:
 ```bash
@@ -107,7 +145,7 @@ cp .env.example .env
 uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend Setup
+#### Frontend Setup
 
 1. Navigate to the frontend directory:
 ```bash
@@ -130,6 +168,26 @@ echo "REACT_APP_BACKEND_URL=http://localhost:8000" > .env
 npm start
 ```
 
+### 🎯 Quick Start (After Installation)
+
+#### Using Generated Scripts
+```bash
+# Start all services
+./start.sh
+
+# Stop all services  
+./stop.sh
+```
+
+#### Direct Commands
+```bash
+# Start backend (in backend/ directory)
+source venv/bin/activate && uvicorn server:app --reload
+
+# Start frontend (in frontend/ directory)
+npm start
+```
+
 The application will be available at `http://localhost:3000`
 
 ## 🔧 Configuration
@@ -149,21 +207,28 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 
 ## 📊 API Endpoints
 
-### Terms Management
-- `GET /api/terms` - List all terms
-- `POST /api/terms` - Create new term
-- `PUT /api/terms/{id}` - Update term
-- `DELETE /api/terms/{id}` - Delete term
+### Academic Year Management
+- `GET /api/years` - List all academic years
+- `POST /api/years` - Create new academic year
+- `PUT /api/years/{id}` - Update academic year
+- `DELETE /api/years/{id}` - Delete academic year
 
-### Subjects Management
-- `GET /api/subjects` - List all subjects
+### Semester Management
+- `GET /api/semesters` - List all semesters (with optional year filter)
+- `POST /api/semesters` - Create new semester
+- `PUT /api/semesters/{id}` - Update semester
+- `DELETE /api/semesters/{id}` - Delete semester
+
+### Subject Management
+- `GET /api/subjects` - List all subjects (with optional semester filter)
 - `POST /api/subjects` - Create new subject
 - `PUT /api/subjects/{id}` - Update subject
 - `DELETE /api/subjects/{id}` - Delete subject
 
-### Files Management
-- `GET /api/files` - List all files
+### File Management
+- `GET /api/files` - List all files (with optional filters)
 - `POST /api/files` - Create new file
+- `POST /api/files/multi-upload` - Upload multiple files at once
 - `PUT /api/files/{id}` - Update file
 - `DELETE /api/files/{id}` - Delete file
 - `POST /api/files/upload` - Upload .tex file
@@ -175,19 +240,31 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 - `GET /api/files/{id}/export` - Export single file
 - `POST /api/export/bulk` - Bulk export files
 
-### Dashboard
+### Dashboard & Legacy
 - `GET /api/dashboard/stats` - Get dashboard statistics
+- `GET /api/terms` - Legacy terms endpoint (backward compatibility)
 
 ## 💾 Database Schema
 
 ### Collections
 
-#### Terms
+#### Years
 ```javascript
 {
   "id": "uuid",
-  "name": "Fall 2024",
-  "description": "Fall semester 2024",
+  "year": 2024,
+  "description": "Academic year 2024-2025",
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### Semesters
+```javascript
+{
+  "id": "uuid",
+  "year_id": "year_uuid",
+  "name": "Fall",
+  "description": "Fall semester",
   "start_date": "2024-09-01",
   "end_date": "2024-12-15",
   "created_at": "2024-01-01T00:00:00Z"
@@ -200,7 +277,7 @@ REACT_APP_BACKEND_URL=http://localhost:8000
   "id": "uuid",
   "name": "Advanced Calculus",
   "description": "Calculus III - Multivariable Calculus",
-  "term_id": "term_uuid",
+  "semester_id": "semester_uuid",
   "color": "#FF6B6B",
   "created_at": "2024-01-01T00:00:00Z"
 }
@@ -212,7 +289,7 @@ REACT_APP_BACKEND_URL=http://localhost:8000
   "id": "uuid",
   "name": "homework_1.tex",
   "subject_id": "subject_uuid",
-  "term_id": "term_uuid",
+  "semester_id": "semester_uuid",
   "content": "\\documentclass{article}...",
   "word_count": 150,
   "file_size": 1024,
@@ -220,7 +297,7 @@ REACT_APP_BACKEND_URL=http://localhost:8000
   "compilation_output": "...",
   "tags": ["homework", "calculus"],
   "notes": "First assignment",
-  "source_type": "manual",
+  "source_type": "manual", // "manual", "git", "paste", "multi_upload"
   "versions": [...],
   "created_at": "2024-01-01T00:00:00Z",
   "updated_at": "2024-01-01T00:00:00Z"
@@ -230,20 +307,28 @@ REACT_APP_BACKEND_URL=http://localhost:8000
 ## 🖥️ User Interface
 
 ### Dashboard
-- Overview statistics (terms, subjects, files, compilation status)
+- Overview statistics (years, semesters, subjects, files, compilation status)
 - Recent files list
 - Quick access to main functions
 
 ### Files View
-- Grid layout with file cards
-- Search and filter capabilities
-- File preview and editing
-- Bulk operations
+- Grid layout with file cards showing compilation status
+- Multi-level filtering (Year → Semester → Subject)
+- Multiple file selection and upload
+- File preview and editing with LaTeX syntax highlighting
+- Bulk operations and export
 
 ### Management View
-- Terms and subjects organization
-- Create, edit, and delete operations
-- Color-coded subject organization
+- **Years**: Create and manage academic years (2024, 2025, etc.)
+- **Semesters**: Organize by Fall, Spring, Summer, Winter within each year
+- **Subjects**: Color-coded subject organization within semesters
+- Hierarchical view with drill-down navigation
+
+### New Features
+- **One-Click Setup**: Automated installation for all platforms
+- **Multi-File Upload**: Select and upload multiple .tex files simultaneously
+- **Academic Structure**: Clear Year → Semester → Subject → Files hierarchy
+- **Enhanced Organization**: Better default organization matching academic calendar
 
 ## 🧪 Testing
 
@@ -332,3 +417,34 @@ For issues and questions:
 - [ ] Advanced analytics and reporting
 - [ ] User authentication and permissions
 - [ ] Cloud storage integration
+- [ ] Drag-and-drop file organization
+- [ ] Calendar integration for semester dates
+- [ ] Export to different formats (Word, PDF collections)
+- [ ] Template management system
+
+## 🆘 Quick Troubleshooting
+
+### Installation Issues
+1. **Script permissions (Linux/Mac)**: `chmod +x install.sh`
+2. **Missing dependencies**: The installer will attempt to install them automatically
+3. **MongoDB connection**: Use MongoDB Atlas if local installation fails
+
+### Common Runtime Issues
+1. **Backend won't start**: Check Python version (3.8+) and dependencies
+2. **Frontend can't connect**: Verify REACT_APP_BACKEND_URL in frontend/.env
+3. **LaTeX compilation fails**: Install texlive-xetex package
+4. **File upload errors**: Check file permissions and disk space
+
+### Quick Fixes
+```bash
+# Reset and restart
+./stop.sh
+./start.sh
+
+# Check logs
+# Backend: Check terminal output where uvicorn is running
+# Frontend: Check browser console (F12)
+
+# Reset database (if needed)
+# Connect to MongoDB and drop the latex_tracker database
+```
