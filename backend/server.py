@@ -35,6 +35,44 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 # Models
+class Year(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    year: int  # e.g., 2024
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class YearCreate(BaseModel):
+    year: int
+    description: Optional[str] = None
+
+class YearUpdate(BaseModel):
+    year: Optional[int] = None
+    description: Optional[str] = None
+
+class Semester(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    year_id: str
+    name: str  # "Fall", "Spring", "Summer", "Winter"
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SemesterCreate(BaseModel):
+    year_id: str
+    name: str
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+class SemesterUpdate(BaseModel):
+    year_id: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+# Legacy Term model for backward compatibility (will be deprecated)
 class Term(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
@@ -53,20 +91,20 @@ class Subject(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: Optional[str] = None
-    term_id: str
+    semester_id: str
     color: Optional[str] = "#3B82F6"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class SubjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    term_id: str
+    semester_id: str
     color: Optional[str] = "#3B82F6"
 
 class SubjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    term_id: Optional[str] = None
+    semester_id: Optional[str] = None
     color: Optional[str] = None
 
 class FileVersion(BaseModel):
@@ -82,7 +120,7 @@ class TexFile(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     subject_id: str
-    term_id: str
+    semester_id: str
     content: str
     word_count: int
     file_size: int
@@ -90,7 +128,7 @@ class TexFile(BaseModel):
     compilation_output: Optional[str] = None
     tags: List[str] = []
     notes: Optional[str] = None
-    source_type: str = "manual"  # "manual", "git", "paste"
+    source_type: str = "manual"  # "manual", "git", "paste", "multi_upload"
     git_url: Optional[str] = None
     git_branch: Optional[str] = None
     git_path: Optional[str] = None
@@ -101,7 +139,7 @@ class TexFile(BaseModel):
 class TexFileCreate(BaseModel):
     name: str
     subject_id: str
-    term_id: str
+    semester_id: str
     content: str
     tags: List[str] = []
     notes: Optional[str] = None
@@ -118,9 +156,16 @@ class TexFileUpdate(BaseModel):
     compilation_status: Optional[str] = None
     compilation_output: Optional[str] = None
 
+class MultiFileUpload(BaseModel):
+    files: List[dict]  # List of {name, content} objects
+    subject_id: str
+    semester_id: str
+    tags: List[str] = []
+    notes: Optional[str] = None
+
 class SearchRequest(BaseModel):
     query: str
-    term_id: Optional[str] = None
+    semester_id: Optional[str] = None
     subject_id: Optional[str] = None
     tags: Optional[List[str]] = None
 
@@ -195,7 +240,106 @@ async def compile_latex_to_pdf(content: str, filename: str = "document.tex") -> 
 async def root():
     return {"message": "LaTeX File Tracker API"}
 
-# Term endpoints
+# Year endpoints
+@api_router.post("/years", response_model=Year)
+async def create_year(year: YearCreate):
+    # Check if year already exists
+    existing = await db.years.find_one({"year": year.year})
+    if existing:
+        raise HTTPException(status_code=400, detail="Year already exists")
+    
+    year_obj = Year(**year.dict())
+    await db.years.insert_one(year_obj.dict())
+    return year_obj
+
+@api_router.get("/years", response_model=List[Year])
+async def get_years():
+    years = await db.years.find().sort("year", -1).to_list(100)
+    return [Year(**year) for year in years]
+
+@api_router.get("/years/{year_id}", response_model=Year)
+async def get_year(year_id: str):
+    year = await db.years.find_one({"id": year_id})
+    if not year:
+        raise HTTPException(status_code=404, detail="Year not found")
+    return Year(**year)
+
+@api_router.put("/years/{year_id}", response_model=Year)
+async def update_year(year_id: str, year_update: YearUpdate):
+    year = await db.years.find_one({"id": year_id})
+    if not year:
+        raise HTTPException(status_code=404, detail="Year not found")
+    
+    update_data = {k: v for k, v in year_update.dict().items() if v is not None}
+    if update_data:
+        await db.years.update_one({"id": year_id}, {"$set": update_data})
+    
+    updated_year = await db.years.find_one({"id": year_id})
+    return Year(**updated_year)
+
+@api_router.delete("/years/{year_id}")
+async def delete_year(year_id: str):
+    # Check if year has semesters
+    semesters = await db.semesters.find_one({"year_id": year_id})
+    if semesters:
+        raise HTTPException(status_code=400, detail="Cannot delete year with existing semesters")
+    
+    result = await db.years.delete_one({"id": year_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Year not found")
+    return {"message": "Year deleted successfully"}
+
+# Semester endpoints
+@api_router.post("/semesters", response_model=Semester)
+async def create_semester(semester: SemesterCreate):
+    # Verify year exists
+    year = await db.years.find_one({"id": semester.year_id})
+    if not year:
+        raise HTTPException(status_code=404, detail="Year not found")
+    
+    semester_obj = Semester(**semester.dict())
+    await db.semesters.insert_one(semester_obj.dict())
+    return semester_obj
+
+@api_router.get("/semesters", response_model=List[Semester])
+async def get_semesters(year_id: Optional[str] = None):
+    query = {"year_id": year_id} if year_id else {}
+    semesters = await db.semesters.find(query).sort("created_at", -1).to_list(100)
+    return [Semester(**semester) for semester in semesters]
+
+@api_router.get("/semesters/{semester_id}", response_model=Semester)
+async def get_semester(semester_id: str):
+    semester = await db.semesters.find_one({"id": semester_id})
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semester not found")
+    return Semester(**semester)
+
+@api_router.put("/semesters/{semester_id}", response_model=Semester)
+async def update_semester(semester_id: str, semester_update: SemesterUpdate):
+    semester = await db.semesters.find_one({"id": semester_id})
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semester not found")
+    
+    update_data = {k: v for k, v in semester_update.dict().items() if v is not None}
+    if update_data:
+        await db.semesters.update_one({"id": semester_id}, {"$set": update_data})
+    
+    updated_semester = await db.semesters.find_one({"id": semester_id})
+    return Semester(**updated_semester)
+
+@api_router.delete("/semesters/{semester_id}")
+async def delete_semester(semester_id: str):
+    # Check if semester has subjects
+    subjects = await db.subjects.find_one({"semester_id": semester_id})
+    if subjects:
+        raise HTTPException(status_code=400, detail="Cannot delete semester with existing subjects")
+    
+    result = await db.semesters.delete_one({"id": semester_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Semester not found")
+    return {"message": "Semester deleted successfully"}
+
+# Term endpoints (legacy - for backward compatibility)
 @api_router.post("/terms", response_model=Term)
 async def create_term(term: TermCreate):
     term_obj = Term(**term.dict())
@@ -240,18 +384,18 @@ async def delete_term(term_id: str):
 # Subject endpoints
 @api_router.post("/subjects", response_model=Subject)
 async def create_subject(subject: SubjectCreate):
-    # Verify term exists
-    term = await db.terms.find_one({"id": subject.term_id})
-    if not term:
-        raise HTTPException(status_code=404, detail="Term not found")
+    # Verify semester exists
+    semester = await db.semesters.find_one({"id": subject.semester_id})
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semester not found")
     
     subject_obj = Subject(**subject.dict())
     await db.subjects.insert_one(subject_obj.dict())
     return subject_obj
 
 @api_router.get("/subjects", response_model=List[Subject])
-async def get_subjects(term_id: Optional[str] = None):
-    query = {"term_id": term_id} if term_id else {}
+async def get_subjects(semester_id: Optional[str] = None):
+    query = {"semester_id": semester_id} if semester_id else {}
     subjects = await db.subjects.find(query).to_list(1000)
     return [Subject(**subject) for subject in subjects]
 
@@ -268,11 +412,11 @@ async def update_subject(subject_id: str, subject_update: SubjectUpdate):
     if not subject:
         raise HTTPException(status_code=404, detail="Subject not found")
     
-    # Verify term exists if term_id is being updated
-    if subject_update.term_id and subject_update.term_id != subject.get('term_id'):
-        term = await db.terms.find_one({"id": subject_update.term_id})
-        if not term:
-            raise HTTPException(status_code=404, detail="Term not found")
+    # Verify semester exists if semester_id is being updated
+    if subject_update.semester_id and subject_update.semester_id != subject.get('semester_id'):
+        semester = await db.semesters.find_one({"id": subject_update.semester_id})
+        if not semester:
+            raise HTTPException(status_code=404, detail="Semester not found")
     
     updated_subject = Subject(**subject)
     for key, value in subject_update.dict(exclude_unset=True).items():
@@ -293,14 +437,14 @@ async def delete_subject(subject_id: str):
 # File endpoints
 @api_router.post("/files", response_model=TexFile)
 async def create_file(file_data: TexFileCreate):
-    # Verify subject and term exist
+    # Verify subject and semester exist
     subject = await db.subjects.find_one({"id": file_data.subject_id})
     if not subject:
         raise HTTPException(status_code=404, detail="Subject not found")
     
-    term = await db.terms.find_one({"id": file_data.term_id})
-    if not term:
-        raise HTTPException(status_code=404, detail="Term not found")
+    semester = await db.semesters.find_one({"id": file_data.semester_id})
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semester not found")
     
     # Create file with version
     word_count = count_words(file_data.content)
@@ -327,15 +471,66 @@ async def create_file(file_data: TexFileCreate):
     await db.tex_files.insert_one(file_obj.dict())
     return file_obj
 
+@api_router.post("/files/multi-upload", response_model=List[TexFile])
+async def create_multiple_files(multi_upload: MultiFileUpload):
+    # Verify subject and semester exist
+    subject = await db.subjects.find_one({"id": multi_upload.subject_id})
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    
+    semester = await db.semesters.find_one({"id": multi_upload.semester_id})
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semester not found")
+    
+    created_files = []
+    
+    for file_data in multi_upload.files:
+        # Validate file data
+        if not file_data.get('name') or not file_data.get('content'):
+            continue
+            
+        # Create file with version
+        word_count = count_words(file_data['content'])
+        file_size = get_file_size(file_data['content'])
+        initial_version = create_file_version(file_data['content'])
+        
+        file_obj = TexFile(
+            name=file_data['name'],
+            subject_id=multi_upload.subject_id,
+            semester_id=multi_upload.semester_id,
+            content=file_data['content'],
+            word_count=word_count,
+            file_size=file_size,
+            tags=multi_upload.tags,
+            notes=multi_upload.notes,
+            source_type="multi_upload",
+            versions=[initial_version]
+        )
+        
+        # Try to compile the LaTeX file automatically
+        try:
+            status, output, result = await compile_latex_to_pdf(file_data['content'], file_data['name'])
+            file_obj.compilation_status = status
+            file_obj.compilation_output = output
+        except Exception as e:
+            # If compilation fails, still create the file but mark compilation as error
+            file_obj.compilation_status = "error"
+            file_obj.compilation_output = f"Auto-compilation failed: {str(e)}"
+        
+        await db.tex_files.insert_one(file_obj.dict())
+        created_files.append(file_obj)
+    
+    return created_files
+
 @api_router.get("/files", response_model=List[TexFile])
 async def get_files(
-    term_id: Optional[str] = None,
+    semester_id: Optional[str] = None,
     subject_id: Optional[str] = None,
     tags: Optional[str] = None
 ):
     query = {}
-    if term_id:
-        query["term_id"] = term_id
+    if semester_id:
+        query["semester_id"] = semester_id
     if subject_id:
         query["subject_id"] = subject_id
     if tags:
@@ -425,8 +620,8 @@ async def search_files(search_request: SearchRequest):
     query = {}
     
     # Add filters
-    if search_request.term_id:
-        query["term_id"] = search_request.term_id
+    if search_request.semester_id:
+        query["semester_id"] = search_request.semester_id
     if search_request.subject_id:
         query["subject_id"] = search_request.subject_id
     if search_request.tags:

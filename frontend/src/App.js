@@ -595,18 +595,21 @@ const AddFileModal = ({ isOpen, onClose, onSuccess, terms, subjects }) => {
 // Main App Component
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [terms, setTerms] = useState([]);
+  const [years, setYears] = useState([]);
+  const [semesters, setSemesters] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [files, setFiles] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
-  const [selectedTerm, setSelectedTerm] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [previewFile, setPreviewFile] = useState(null);
 
   // Modal states
-  const [showCreateTerm, setShowCreateTerm] = useState(false);
+  const [showCreateYear, setShowCreateYear] = useState(false);
+  const [showCreateSemester, setShowCreateSemester] = useState(false);
   const [showCreateSubject, setShowCreateSubject] = useState(false);
   const [showAddFile, setShowAddFile] = useState(false);
 
@@ -614,14 +617,16 @@ function App() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [termsRes, subjectsRes, filesRes, statsRes] = await Promise.all([
-        axios.get(`${API}/terms`),
+      const [yearsRes, semestersRes, subjectsRes, filesRes, statsRes] = await Promise.all([
+        axios.get(`${API}/years`),
+        axios.get(`${API}/semesters`),
         axios.get(`${API}/subjects`),
         axios.get(`${API}/files`),
         axios.get(`${API}/stats`)
       ]);
       
-      setTerms(termsRes.data);
+      setYears(yearsRes.data);
+      setSemesters(semestersRes.data);
       setSubjects(subjectsRes.data);
       setFiles(filesRes.data);
       setStats(statsRes.data);
