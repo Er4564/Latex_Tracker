@@ -314,6 +314,16 @@ async def create_file(file_data: TexFileCreate):
         versions=[initial_version]
     )
     
+    # Try to compile the LaTeX file automatically
+    try:
+        status, output, result = await compile_latex_to_pdf(file_data.content, file_data.name)
+        file_obj.compilation_status = status
+        file_obj.compilation_output = output
+    except Exception as e:
+        # If compilation fails, still create the file but mark compilation as error
+        file_obj.compilation_status = "error"
+        file_obj.compilation_output = f"Auto-compilation failed: {str(e)}"
+    
     await db.tex_files.insert_one(file_obj.dict())
     return file_obj
 
