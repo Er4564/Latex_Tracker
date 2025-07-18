@@ -220,10 +220,16 @@ async def get_subject(subject_id: str):
     return Subject(**subject)
 
 @api_router.put("/subjects/{subject_id}", response_model=Subject)
-async def update_subject(subject_id: str, subject_update: SubjectCreate):
+async def update_subject(subject_id: str, subject_update: SubjectUpdate):
     subject = await db.subjects.find_one({"id": subject_id})
     if not subject:
         raise HTTPException(status_code=404, detail="Subject not found")
+    
+    # Verify term exists if term_id is being updated
+    if subject_update.term_id and subject_update.term_id != subject.get('term_id'):
+        term = await db.terms.find_one({"id": subject_update.term_id})
+        if not term:
+            raise HTTPException(status_code=404, detail="Term not found")
     
     updated_subject = Subject(**subject)
     for key, value in subject_update.dict(exclude_unset=True).items():
